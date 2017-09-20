@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script>
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    var ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    var worker = new Worker("worker/did-timeout.js");
+
+    worker.onmessage = this.step_func(function(e) {
+      /* FIXME: Gets called twice, once with value undefined */
+      if (typeof e.data[0] == "undefined") {
+        console.log("undefined");
+        return;
+      }
+      var ret = e.data[0];
+      var time = Math.abs(e.data[1]);
+      assert_equals(ret, "timed-out");
+      assert_true(time >= 500);
+      t.done();
+    });
+    worker.postMessage([ia]);
+  });
+}, "atomics-dedicated-worker-wait-did-timeout");
+</script>
