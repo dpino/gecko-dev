@@ -1,0 +1,69 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script>
+
+/**
+  FIXME; Not working as expected.
+*/
+
+window.addEventListener("load", function() {
+
+async_test(function(t) {
+    // Helper function to check when the test is done.
+    var count = 0;
+    var check_done = t.step_func(function() {
+        if (count == 7) {
+            t.done();
+        }
+    });
+    var sab = new SharedArrayBuffer(1024);
+    var view = new Int32Array(sab, 32, 20);
+    var good_indices = [
+        (view) => 0/-1, // -0
+        (view) => '-0',
+        (view) => view.length - 1,
+        (view) => ({ valueOf: () => 0 }),
+        (view) => ({ toString: () => '0', valueOf: false }),
+    ];
+
+    var A = new Worker("worker/good-views/A.js");
+    var B = new Worker("worker/good-views/B.js");
+    var C = new Worker("worker/good-views/C.js");
+    A.onmessage = this.step_func(function(e) {
+        var ret = e.data[0];
+        assert_equals(ret, "not-equal");
+        count +=1 ; check_done();
+    });
+    B.onmessage = this.step_func(function(e) {
+        var ret = e.data[0];
+        assert_equals(ret, "timed-out");
+        count +=1 ; check_done();
+    });
+    C.onmessage = this.step_func(function(e) {
+        var ret = e.data[0];
+        assert_equals(ret, "not-equal");
+        count +=1 ; check_done();
+    });
+
+    A.postMessage([view]);
+    B.postMessage([view]);
+
+    for (let fn of good_indices) {
+        let idx = fn(view);
+        view.fill(0);
+        Atomics.store(view, idx, 37);
+        // Firefox cannot apply clone algorithm on an Object.
+        // See https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm
+        if (typeof idx == "object") {
+            idx = idx.valueOf ? idx.valueOf() : idx.toString();
+        }
+        C.postMessage([view, idx]);
+    }
+}, "atomics-dedicated-worker-wait-good-views");
+
+});
+
+</script>
