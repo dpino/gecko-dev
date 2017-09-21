@@ -1,0 +1,25 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script>
+
+window.addEventListener("load", function(e) {
+
+async_test(function(t) {
+    var worker = new Worker("worker/negative-timeout.js"); 
+    var sab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+    var ia = new Int32Array(sab);
+
+    worker.onmessage = function(e) {
+        var ret = e.data[0];
+        assert_true(ret == "timed-out");
+        t.done();
+    }
+    worker.postMessage([ia]);
+}, "atomics-wait-negative-timeout");
+
+})
+
+</script>
