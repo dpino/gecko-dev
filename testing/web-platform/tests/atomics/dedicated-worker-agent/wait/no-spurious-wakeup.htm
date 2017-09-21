@@ -1,0 +1,32 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script>
+
+window.addEventListener("load", function(e) {
+
+async_test(function(t) {
+    var sab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+    var ia = new Int32Array(sab);
+    var worker = new Worker("worker/no-spurious-wakeup.js");
+
+    setTimeout(function() {
+      // Change the value, should not wake the agent.
+      Atomics.store(ia, 0, 1);
+      // Wake up worker.
+      setTimeout(() => Atomics.wake(ia, 0), 500);
+    }, 500);
+
+    worker.onmessage = this.step_func(function(e) {
+        var ret = e.data[0];
+        assert_true(Math.abs(ret) <= 1000);
+        t.done();
+    });
+    worker.postMessage([ia]);
+}, "atomics-wait-no-spurious-wakeup");
+
+});
+
+</script>
