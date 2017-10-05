@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script>
+
+/*
+  Test that Atomics.wait does not time out with a NaN timeout.
+*/
+
+window.addEventListener("load", function() {
+
+async_test(function(t) {
+    var ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    var worker = new SharedWorker("worker/nan-timeout.js");
+    window.setTimeout(() => Atomics.wake(ia, 0), 500);
+
+    worker.port.start();
+
+    worker.port.onerror = function(e) {
+      assert_false(true);
+    }
+    worker.port.onmessage = this.step_func(function(e) {
+        let val = e.data[0];
+        if (typeof val == "undefined") return;
+        assert_equals(val, "ok");
+        t.done();
+    });
+    worker.postMessage([ia]);
+}, "atomics-shared-worker-wait-nan-timeout");
+
+});
+
+</script>
