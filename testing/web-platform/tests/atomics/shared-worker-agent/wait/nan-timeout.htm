@@ -27,7 +27,7 @@ async_test(function(t) {
         assert_equals(val, "ok");
         t.done();
     });
-    worker.postMessage([ia]);
+    worker.port.postMessage([ia]);
 }, "atomics-shared-worker-wait-nan-timeout");
 
 });
