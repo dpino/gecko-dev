@@ -1,0 +1,40 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script src=/resources/workerhelper.js></script>
+<script>
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    var count = 0;
+    var check_done = t.step_func(function() {
+      if (count == 3) {
+        t.done();
+      }
+    });
+    var worker_code = `
+      onmessage = function(e) {
+        var ia = e.data[0];
+        var rs = Atomics.wait(ia, 0, 0);
+        postMessage(rs);
+      }
+    `;
+    var onmessage = function(e) {
+      var rs = e.data;
+      assert_equals(rs, "ok");
+      count += 1;
+      check_done();
+    }
+
+    var ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    var workers = [];
+    workers.push(WorkerHelper.createFromString(worker_code, onmessage));
+    workers.push(WorkerHelper.createFromString(worker_code, onmessage));
+    workers.push(WorkerHelper.createFromString(worker_code, onmessage));
+    setTimeout(() => Atomics.wake(ia, 0), 500);
+    WorkerHelper.broadcast(workers, ia);
+  }, "atomics-dedicated-worker-wake-wake-all");
+});
+</script>
