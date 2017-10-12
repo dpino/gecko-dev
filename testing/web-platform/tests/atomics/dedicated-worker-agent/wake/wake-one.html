@@ -1,0 +1,55 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script src=/resources/workerhelper.js></script>
+<script>
+
+// Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wake wakes one waiter if that's what the count is.
+---*/
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    var count = 0;
+    var check_done = t.step_func(function() {
+      if (count == 3) {
+        t.done();
+      }
+    });
+    var worker_code = `
+      onmessage = function(e) {
+        var sab = e.data[0];
+        var ia = new Int32Array(sab);
+        postMessage(Atomics.wait(ia, 0, 0, 1000)); // We may timeout eventually
+      }
+    `;
+    var workers = [];
+    workers.push(WorkerHelper.createFromString(worker_code, function(e) {
+      var rs = e.data;
+      assert_equals(rs, "ok");
+      count += 1;
+      check_done();
+    }));
+    workers.push(WorkerHelper.createFromString(worker_code, function(e) {
+      var rs = e.data;
+      assert_equals(rs, "timed-out");
+      count += 1;
+      check_done();
+    }));
+    var ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    setTimeout(function() {
+      assert_equals(1, Atomics.wake(ia, 0, 1)) // Wake one
+      count += 1;
+      check_done();
+    }, 500);
+    WorkerHelper.broadcast(workers, ia.buffer);
+  }, "atomics-dedicated-worker-wake-one");
+});
+
+</script>
