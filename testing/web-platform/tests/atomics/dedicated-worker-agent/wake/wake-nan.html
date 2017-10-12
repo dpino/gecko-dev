@@ -1,0 +1,37 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script src=/resources/workerhelper.js></script>
+<script>
+
+// Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wake wakes zero waiters if the count is NaN
+---*/
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    var worker = `
+      onmessage = function(e) {
+        var sab = e.data[0];
+        var ia = new Int32Array(sab);
+        postMessage(Atomics.wait(ia, 0, 0, 1000)); // We may timeout eventually
+      }
+    `;
+    var ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    var workers = [];
+    workers.push(WorkerHelper.createFromString(worker, function(e) {
+      assert_equals(e.data, "timed-out");
+      t.done();
+    }));
+    WorkerHelper.broadcast(workers, ia.buffer);
+    setTimeout(() => assert_equals(Atomics.wake(ia, 0, NaN), 0), 500); // Don't actually wake it
+  }, "atomics-dedicated-worker-wake-nan");
+});
+
+</script>
