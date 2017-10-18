@@ -6,6 +6,14 @@
 <script src=/resources/workerhelper.js></script>
 <script>
 
+// Copyright (C) 2015 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wake wakes all waiters if that's what the count is.
+---*/
+
 window.addEventListener("load", function() {
   async_test(function(t) {
     var count = 0;
