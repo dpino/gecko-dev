@@ -1,0 +1,68 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script src=/resources/workerhelper.js></script>
+<script>
+
+// Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wake wakes agents in the order they are waiting.
+---*/
+
+// Create workers and start them all spinning.  We set atomic slots to make
+// them go into a wait, thus controlling the waiting order.  Then we wake them
+// one by one and observe the wakeup order.
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    var rs = [];
+    function check_results(rs) {
+      for (var i=0; i < 3; i++) {
+        assert_equals(rs[i], "ok");
+      }
+      t.done();
+    }
+    var workers = [];
+    for (var i=0; i < 3; i++) {
+      var w = WorkerHelper.createFromString(`
+        onmessage = function(e) {
+          var sab = e.data[0];
+          var ia = new Int32Array(sab);
+          while (Atomics.load(ia, ${i+1}) == 0);
+          postMessage(${i} + Atomics.wait(ia, 0, 0));
+        }
+      `, function (e) {
+        rs.push(e.data);
+      });
+      workers.push(w);
+    }
+    var ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT*4));
+    WorkerHelper.broadcast(workers, ia.buffer);
+
+    // Make them sleep in order 0 1 2 on ia[0]
+    var i = 0;
+    var start = new Date();
+    while (i < 3) {
+      var now = new Date();
+      var diff = start - now;
+      if (diff > 500) {
+        start = now;
+        Atomics.store(ia, i+1, 1);
+        i++;
+      }
+    }
+
+    // Wake them up one at a time and check the order is 0 1 2
+    for ( var i=0 ; i < 3 ; i++ ) {
+      assert.sameValue(Atomics.wake(ia, 0, 1), 1);
+    }
+    setTimeout(check_results, 500);
+  }, "atomics-dedicated-worker-wake-in-order")
+});
+
+</script>

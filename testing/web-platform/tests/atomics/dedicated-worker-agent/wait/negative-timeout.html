@@ -1,0 +1,37 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script src=/resources/workerhelper.js></script>
+<script>
+
+// Copyright (C) 2015 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wait times out with a negative timeout
+---*/
+
+window.addEventListener("load", function(e) {
+  async_test(function(t) {
+		var worker_code = `
+			onmessage = function(e) {
+				var ia = e.data[0];
+				var ret = Atomics.wait(ia, 0, 0, -5);
+				postMessage([ret]);
+			}
+		`;
+    var onmessage = this.step_func(function(e) {
+      var ret = e.data[0];
+      assert_true(ret == "timed-out");
+      t.done();
+    })
+		var worker = WorkerHelper.createFromString(worker_code, onmessage);
+		var ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    worker.postMessage([ia]);
+  }, "atomics-dedicated-worker-wait-negative-timeout");
+})
+
+</script>
