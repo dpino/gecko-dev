@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+
+<script>
+
+// Copyright (C) 2015 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wait does not time out with a NaN timeout
+---*/
+
+window.addEventListener("load", function() {
+  // Window->Pop-up->Worker.
+  async_test(function(t) {
+    let popup = window.open("../empty.html", "empty");
+    let test = this;
+    popup.onmessage = function(e) {
+      let worker = new Worker('nan-timeout.js');
+      worker.onmessage = test.step_func_done(function(e) {
+        assert_equals(e.data[0], "ok");
+      });
+      let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+      worker.postMessage([ia]);
+      setTimeout(() => Atomics.wake(ia, 0), 500);
+    }
+    popup.postMessage([], '*');
+  }, "atomics-dedicated-worker-wait-nan-timeout-from-popup-window");
+});
+
+</script>

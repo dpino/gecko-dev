@@ -1,0 +1,107 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+
+<body>
+    <iframe id="myiframe" style="display: none" src="../empty.html" ></iframe>
+</body>
+
+<script>
+
+// Copyright (C) 2015 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wake wakes all waiters if that's what the count is.
+---*/
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    let rs = [];
+    let workers = [];
+    let nworkers = 3;
+    // Create two workers and initialize them.
+    for (let i = 0; i < nworkers; i++) {
+      let w = new Worker('wake-all.js');
+      w.onmessage = function(e) {
+        rs.push(e.data);
+      }
+      workers.push(w);
+    }
+    // Send message to all.
+    let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    for (let i = 0; i < nworkers; i++) {
+      workers[i].postMessage([ia.buffer]);
+    }
+    // Wake one worker.
+    setTimeout(() => assert_equals(nworkers, Atomics.wake(ia, 0)), 500);
+    // Check all workers woke.
+    setTimeout(this.step_func_done(function() {
+      rs.sort();
+      assert_equals(rs[0], "ok");
+      assert_equals(rs[1], "ok");
+      assert_equals(rs[2], "ok");
+    }), 2000);
+  }, "atomics-dedicated-worker-wake-wake-all");
+  async_test(function(t) {
+    let worker = new Worker('wake-all-worker.js');
+    worker.onmessage = this.step_func_done(function(e) {
+      let rs = e.data[0];
+      rs.sort();
+      assert_equals(rs[0], "ok");
+      assert_equals(rs[1], "ok");
+      assert_equals(rs[2], "ok");
+    });
+    worker.postMessage([]);
+  }, "atomics-dedicated-worker-wake-wake-all-from-worker");
+  async_test(function(t) {
+    let worker = new SharedWorker('wake-all-shared-worker.js');
+    worker.port.start();
+    worker.port.onmessage = this.step_func_done(function(e) {
+      let rs = e.data[0];
+      rs.sort();
+      assert_equals(rs[0], "ok");
+      assert_equals(rs[1], "ok");
+      assert_equals(rs[2], "ok");
+    });
+    worker.port.postMessage([]);
+  }, "atomics-dedicated-worker-wake-wake-all-from-shared-worker");
+  async_test(function(t) {
+    let iframe = document.getElementById('myiframe');
+    let contentWindow = iframe.contentWindow;
+    let test = this;
+    contentWindow.onmessage = function(e) {
+      let rs = [];
+      let workers = [];
+      let nworkers = 3;
+      // Create three workers and initialize them.
+      for (let i = 0; i < nworkers; i++) {
+        let w = new Worker('wake-all.js');
+        w.onmessage = function(e) {
+          rs.push(e.data);
+        }
+        workers.push(w);
+      }
+      // Send message to all workers.
+      let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+      for (let i = 0; i < nworkers; i++) {
+        workers[i].postMessage([ia.buffer]);
+      }
+      // Wake all workers.
+      setTimeout(() => assert_equals(3, Atomics.wake(ia, 0)), 500);
+      // Check all workers woke up.
+      setTimeout(test.step_func_done(function() {
+        rs.sort();
+        assert_equals(rs[0], "ok");
+        assert_equals(rs[1], "ok");
+        assert_equals(rs[2], "ok");
+      }), 2000);
+    }
+    contentWindow.postMessage([], '*');
+  }, "atomics-dedicated-worker-wake-wake-all-from-iframe");
+});
+</script>

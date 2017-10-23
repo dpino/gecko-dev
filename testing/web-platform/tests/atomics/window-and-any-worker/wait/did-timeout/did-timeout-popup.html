@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+
+<script>
+
+// Copyright (C) 2015 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wait returns the right result when it timed out and that
+  the time to time out is reasonable.
+---*/
+
+window.addEventListener("load", function() {
+  // Window->Pop-up->Worker.
+  async_test(function(t) {
+    let popup = window.open("../empty.html", "empty");
+    popup.onmessage = function(e) {
+      let worker = new Worker('did-timeout.js');
+      let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+      worker.postMessage([ia]);
+      worker.onmessage = function(e) {
+        let ret = e.data[0];
+        let time = Math.abs(e.data[1]);
+        assert_equals(ret, "timed-out");
+        assert_true(time >= 500);
+        t.done();
+      };
+    }
+    popup.postMessage([], '*');
+  }, "atomics-wait-did-timeout-from-popup");
+});
+</script>

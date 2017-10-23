@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+
+<script>
+
+window.addEventListener("load", function(e) {
+  async_test(function(t) {
+    let popup = window.open('../empty.html', 'empty');
+    let test = this;
+    popup.onmessage = function(e) {
+      let worker = new Worker('wait-on-zero.js');
+      worker.onmessage = test.step_func_done(function(e) {
+        assert_equals(e.data, 'ok');
+      });
+      let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+      worker.postMessage([ia.buffer, 2000]);
+      setTimeout(() => assert_equals(1, Atomics.wake(ia, 0)), 1000);
+    }
+    popup.postMessage([], '*');
+  }, "atomics-wait-was-woken-popup");
+});
+
+</script>

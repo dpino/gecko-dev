@@ -1,0 +1,78 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+
+<script>
+
+// Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wake wakes agents in the order they are waiting.
+---*/
+
+// Create workers and start them all spinning.  We set atomic slots to make
+// them go into a wait, thus controlling the waiting order.  Then we wake them
+// one by one and observe the wakeup order.
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    let popup = window.open('../empty.html', 'empty');
+    let test = this;
+    popup.onmessage = function(e) {
+      let rs = [];
+      let workers = [];
+      let nworkers = 3;
+      for (let i = 0; i < nworkers; i++) {
+        let w = new Worker('wake-in-order.js');
+        w.onmessage = function(e) {
+          rs.push({idx: e.data[0], msg: e.data[1]});
+        }
+        workers.push(w);
+      }
+      let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT*4));
+
+      for (let i = 0; i < nworkers; i++) {
+        workers[i].postMessage([i+1, ia.buffer]);
+      }
+
+      // Store on each ia slot ranging from 1-3, with a pause.
+      setTimeout(function() {
+        Atomics.store(ia, 1, 1);
+        setTimeout(function() {
+          Atomics.store(ia, 2, 1);
+          setTimeout(function() {
+            Atomics.store(ia, 3, 1);
+          }, 200);
+        }, 200);
+      }, 200);
+
+      // Wake each worker (waiting on zero), with a pause.
+      setTimeout(function() {
+        setTimeout(function() {
+          Atomics.wake(ia, 0, 1);
+          setTimeout(function() {
+            Atomics.wake(ia, 0, 1);
+            setTimeout(function() {
+              Atomics.wake(ia, 0, 1);
+            }, 200);
+          }, 200);
+        }, 200);
+      }, 1000);
+
+      // Check results.
+      setTimeout(test.step_func_done(function() {
+        for (let i = 0; i < rs.length; i++) {
+          assert_equals(rs[i].idx, i+1);
+          assert_equals(rs[i].msg, "ok");
+        }
+      }), 2000);
+    }
+    popup.postMessage([], '*');
+  }, "atomics-wake-in-order-iframe");
+});
+</script>

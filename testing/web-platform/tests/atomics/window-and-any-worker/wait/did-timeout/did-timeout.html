@@ -1,0 +1,80 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+
+<body>
+  <iframe id="myiframe" style="display: none" src="../empty.html" ></iframe>
+</body>
+
+<script>
+
+// Copyright (C) 2015 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wait returns the right result when it timed out and that
+  the time to time out is reasonable.
+---*/
+
+window.addEventListener("load", function() {
+  // Window->Worker.
+  async_test(function(t) {
+    let worker = new Worker('did-timeout.js');
+    worker.onmessage = this.step_func_done(function(e) {
+      let ret = e.data[0];
+      let time = Math.abs(e.data[1]);
+      assert_equals(ret, "timed-out");
+      assert_true(time >= 500);
+    });
+    let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    worker.postMessage([ia]);
+  }, "atomics-dedicated-worker-wait-did-timeout");
+  // Window->Worker->Worker.
+  async_test(function(t) {
+    let worker = new Worker('did-timeout-worker.js');
+    worker.onmessage = this.step_func(function(e) {
+      let ret = e.data[0];
+      let time = Math.abs(e.data[1]);
+      assert_equals(ret, "timed-out");
+      assert_true(time >= 500);
+      t.done();
+    });
+    worker.postMessage([]);
+  }, "atomics-dedicated-worker-wait-did-timeout-from-worker");
+  // Window->SharedWorker->Worker.
+  async_test(function(t) {
+    let worker = new SharedWorker('did-timeout-shared-worker.js');
+    worker.port.onmessage = this.step_func(function(e) {
+      let ret = e.data[0];
+      let time = Math.abs(e.data[1]);
+      assert_equals(ret, "timed-out");
+      assert_true(time >= 500);
+      t.done();
+    });
+    worker.port.start();
+    worker.port.postMessage([]);
+  }, "atomics-dedicated-worker-wait-did-timeout-from-shared-worker");
+  // Window->IFrame->Worker.
+  async_test(function(t) {
+    let iframe = document.getElementById('myiframe');
+    let contentWindow = iframe.contentWindow;
+    contentWindow.onmessage = function(e) {
+      let worker = new Worker('did-timeout.js');
+      let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+      worker.postMessage([ia]);
+      worker.onmessage = function(e) {
+        let ret = e.data[0];
+        let time = Math.abs(e.data[1]);
+        assert_equals(ret, "timed-out");
+        assert_true(time >= 500);
+        t.done();
+      };
+    }
+    contentWindow.postMessage([], '*');
+  }, "atomics-dedicated-worker-wait-did-timeout-from-iframe");
+});
+</script>

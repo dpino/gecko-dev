@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+
+<script>
+
+/*---
+description: >
+  Test that Atomics.wait actually waits and does not spuriously wake
+  up when the memory value is changed.
+includes: [atomicsHelper.js]
+---*/
+
+window.addEventListener("load", function(e) {
+  async_test(function(t) {
+    let popup = window.open('../empty.html', 'empty');
+    let test = this;
+    popup.onmessage = function(e) {
+      let worker = new Worker('wait-on-zero-diff.js');
+      worker.onmessage = test.step_func_done(function(e) {
+        let ret = e.data[0];
+        // Running on popup window takes a bit longer than normal.
+        assert_true(Math.abs(ret) <= 3000);
+      });
+      let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+      worker.postMessage([ia.buffer]);
+      setTimeout(function() {
+        // Change the value, should not wake the agent.
+        Atomics.store(ia, 0, 1);
+        // Wake up worker.
+        setTimeout(() => assert_equals(1, Atomics.wake(ia, 0)), 500);
+      }, 500);
+    }
+    popup.postMessage([], '*');
+  }, "atomics-wait-no-spurious-wakeup-from-iframe");
+});
+
+</script>

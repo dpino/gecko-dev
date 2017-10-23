@@ -1,0 +1,102 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+
+<body>
+  <iframe id="myiframe" style="display: none" src="../empty.html" ></iframe>
+</body>
+
+<script>
+
+// Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wake wakes one waiter if that's what the count is.
+---*/
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    let rs = [];
+    let workers = [];
+    // Create two workers and initialize them.
+    for (let i = 0; i < 2; i++) {
+      let w = new Worker('wake-one.js');
+      w.onmessage = function(e) {
+        rs.push(e.data);
+      }
+      workers.push(w);
+    }
+    // Send message to all broadcast.
+    let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    for (let i = 0; i < 2; i++) {
+      workers[i].postMessage([ia.buffer]);
+    }
+    // Wake one worker.
+    setTimeout(() => assert_equals(1, Atomics.wake(ia, 0, 1)), 500);
+    // Check one worker woke up and another one timed-out.
+    setTimeout(this.step_func_done(function() {
+      rs.sort();
+      assert_equals(rs[0], "ok");
+      assert_equals(rs[1], "timed-out");
+    }), 2000);
+  }, "atomics-dedicated-worker-wake-one");
+  async_test(function(t) {
+    let worker = new Worker('wake-one-worker.js');
+    worker.onmessage = this.step_func_done(function(e) {
+      let rs = e.data[0];
+      rs.sort();
+      assert_equals(rs[0], "ok");
+      assert_equals(rs[1], "timed-out");
+    });
+    worker.postMessage([]);
+  }, "atomics-dedicated-worker-wake-one-from-worker");
+  async_test(function(t) {
+    let worker = new SharedWorker('wake-one-shared-worker.js');
+    worker.port.start();
+    worker.port.onmessage = this.step_func_done(function(e) {
+      let rs = e.data[0];
+      rs.sort();
+      assert_equals(rs[0], "ok");
+      assert_equals(rs[1], "timed-out");
+    });
+    worker.port.postMessage([]);
+  }, "atomics-dedicated-worker-wake-one-from-shared-worker");
+  async_test(function(t) {
+    let iframe = document.getElementById('myiframe');
+    let contentWindow = iframe.contentWindow;
+    let test = this;
+    contentWindow.onmessage = function(e) {
+      let rs = [];
+      let workers = [];
+      // Create two workers and initialize them.
+      for (let i = 0; i < 2; i++) {
+        let w = new Worker('wake-one.js');
+        w.onmessage = function(e) {
+          rs.push(e.data);
+        }
+        workers.push(w);
+      }
+      // Send message to all broadcast.
+      let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+      for (let i = 0; i < 2; i++) {
+        workers[i].postMessage([ia.buffer]);
+      }
+      // Wake one worker.
+      setTimeout(() => assert_equals(1, Atomics.wake(ia, 0, 1)), 500);
+      // Check one worker woke up and another one timed-out.
+      setTimeout(test.step_func_done(function() {
+        rs.sort();
+        assert_equals(rs[0], "ok");
+        assert_equals(rs[1], "timed-out");
+      }), 2000);
+    }
+    contentWindow.postMessage([], '*');
+  }, "atomics-dedicated-worker-wake-one-from-iframe");
+});
+
+</script>
