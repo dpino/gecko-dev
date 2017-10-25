@@ -1,0 +1,99 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script src=/resources/workerhelper.js></script>
+
+<iframe src="wake-one.html" id="w0"></iframe>
+<iframe src="wake-one.html" id="w1"></iframe>
+
+<script type="text/javascript">
+  /*
+  function createWorkerAsIFrame(id) {
+      var count = 0;
+      return (function() {
+          var body = document.getElementsByTagName('body')[0];
+          if (typeof id == 'undefined') {
+              count++;
+              id = 'iframe' + count;
+          }
+          var iframe = document.createElement(id);
+          iframe.id = id;
+          iframe.seamless = 'seamless';
+          iframe.src = '*';
+          body.appendChild(iframe);
+          return document.getElementById('iframe').contentWindow;
+      })();
+  }
+  function broadcast(workers, data) {
+    for (w in workers) {
+      w.postMessage([data], '*');
+    }
+  }
+  */
+</script>
+
+<script>
+
+// Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wake wakes one waiter if that's what the count is.
+---*/
+
+window.addEventListener("load", function() {
+  function broadcast(workers, data) {
+    for (w in workers) {
+      w.postMessage([data], '*');
+    }
+  }
+  async_test(function(t) {
+    var workers = [];
+    var rs = [];
+    function check_results(rs) {
+      rs.sort();
+      assert_equals(rs[0], "ok");
+      assert_equals(rs[1], "timed-out");
+      t.done();
+    }
+    var w0 = document.getElementById('w0').contentWindow;
+    var w1 = document.getElementById('w1').contentWindow;
+    console.log("w0: " + w0);
+    console.log("w1: " + w1);
+    workers.push(w0);
+    workers.push(w1);
+
+    /*
+    workers.push(createWorkerAsIFrame());
+    workers.push(createWorkerAsIFrame());
+    */
+    workers[0].onmessage = function(e) {
+      var sab = e.data[0];
+      var ia = new Int32Array(sab);
+      window.postMessage(Atomics.wait(ia, 0, 0, 1000)); // We may timeout eventually
+    };
+    workers[1].onmessage = function(e) {
+      var sab = e.data[0];
+      var ia = new Int32Array(sab);
+      window.postMessage(Atomics.wait(ia, 0, 0, 1000)); // We may timeout eventually
+    };
+    window.addEventListener('message', function(e) {
+      console.log("push: " + e.data);
+      rs.push(e.data);
+    });
+    // onmessage((e) => rs.push(e.data));
+
+    var ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    workers[0].postMessage([ia.buffer], '*');
+    workers[1].postMessage([ia.buffer], '*');
+    // broadcast(workers, ia.buffer);
+
+    setTimeout(() => assert_equals(1, Atomics.wake(ia, 0, 1)), 500); // Wake one
+    setTimeout(() => check_results(rs), 2000); // Give the agents a chance to wait
+  }, "atomics-dedicated-worker-wake-one");
+});
+
+</script>
