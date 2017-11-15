@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script src=/resources/workerhelper.js></script>
+
+<!-- FIXME: Creating an iframe of different origin crashes the browser -->
+<body>
+  <iframe id="myiframe" style="display: none" src="http://www.w3.org" ></iframe>
+</body>
+
+<script>
+
+window.addEventListener('load', function() {
+	async_test(function(t) {
+		t.done();
+	}, "window-and-iframe-of-different-origin-cannot-share-shared-array-buffer);
+});
+
+</script>
