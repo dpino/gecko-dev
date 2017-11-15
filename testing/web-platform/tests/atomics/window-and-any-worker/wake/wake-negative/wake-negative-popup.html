@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+
+<script>
+
+// Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wake wakes zero waiters if the count is negative
+---*/
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    let popup = window.open('../empty.html', 'empty');
+    let test = this;
+    popup.onmessage = function(e) {
+      let worker = new Worker('wake-negative.js');
+      worker.onmessage = test.step_func_done(function(e) {
+        assert_equals(e.data, "timed-out");
+      });
+      let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+      worker.postMessage([ia.buffer]);
+      setTimeout(() => assert_equals(0, Atomics.wake(ia, 0, -1)), 500); // Don't actually wake it
+    }
+    popup.postMessage([], '*');
+  }, "atomics-wake-negative-from-popup");
+});
+
+</script>

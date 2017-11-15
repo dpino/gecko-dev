@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+
+<script>
+
+// Copyright (C) 2015 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+description: >
+  Test that Atomics.wake wakes all waiters if that's what the count is.
+---*/
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    let popup = window.open('../empty.html', 'empty');
+    let test = this;
+    popup.onmessage = function(e) {
+      let rs = [];
+      let workers = [];
+      let nworkers = 3;
+      // Create three workers and initialize them.
+      for (let i = 0; i < nworkers; i++) {
+        let w = new Worker('wake-all.js');
+        w.onmessage = function(e) {
+          rs.push(e.data);
+        }
+        workers.push(w);
+      }
+      // Send message to all workers.
+      let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+      for (let i = 0; i < nworkers; i++) {
+        workers[i].postMessage([ia.buffer, 2000]);
+      }
+      // Wake all workers.
+      setTimeout(() => assert_equals(3, Atomics.wake(ia, 0)), 500);
+      // Check all workers woke up.
+      setTimeout(test.step_func_done(function() {
+        rs.sort();
+        assert_equals(rs[0], "ok");
+        assert_equals(rs[1], "ok");
+        assert_equals(rs[2], "ok");
+      }), 2000);
+    }
+    popup.postMessage([], '*');
+  }, "atomics-wake-all-from-popup");
+});
+</script>
