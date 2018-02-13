@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>js/test262/built-ins/Atomics/wake/wake-two.html</title>
+
+    <script src="/resources/testharness.js"></script>
+    <script src="/resources/testharnessreport.js"></script>
+    <script src="/resources/test262-worker-harness.js?pipe=sub"></script>
+    <script src="/resources/test262-harness.js"></script>
+
+  </head>
+  <body>
+  </body>
+  <script type="text/javascript">
+    // Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+    // This code is governed by the BSD license found in the LICENSE file.
+
+    /*---
+    esid: sec-atomics.wake
+    description: >
+      Test that Atomics.wake wakes two waiters if that's what the count is.
+    ---*/
+    let attrs = {};
+    function test262() {
+			return "" +
+				"var NUMAGENT = 3;\n" +
+				"var WAKEUP = 0;                 // Agents wait here\n" +
+				"var RUNNING = 1;                // Accounting of live agents here\n" +
+				"var NUMELEM = 2;\n" +
+				"var WAKECOUNT = 2;\n" +
+				"let rs = [];\n" +
+				"let ws = [];\n" +
+				"for (let i = 0; i < NUMAGENT; i++) {\n" +
+				"  let w = createWorkerFromString(`\n" +
+				"      onmessage = function(e) {\n" +
+				"        let ia = new Int32Array(e.data[0]);\n" +
+				"        Atomics.add(ia, ${RUNNING}, 1);\n" +
+				"        // Waiters that are not woken will time out eventually.\n" +
+				"        let ret = Atomics.wait(ia, ${WAKEUP}, 0, 3000);\n" +
+				"        postMessage(ret);\n" +
+				"      }\n" +
+				"  `);\n" +
+				"  w.onmessage = function(e) {\n" +
+				"    rs.push(e.data);\n" +
+				"    check_results();\n" +
+				"  }\n" +
+				"  ws.push(w);\n" +
+				"}\n" +
+				"var ia = new Int32Array(new SharedArrayBuffer(NUMELEM * Int32Array.BYTES_PER_ELEMENT));\n" +
+				"ws.forEach(function(w) {\n" +
+				"  w.postMessage([ia.buffer]);\n" +
+				"});\n" +
+				"setTimeout(function() {\n" +
+				"  // Wait for agents to be running.\n" +
+				"  waitUntil(ia, RUNNING, NUMAGENT);\n" +
+				"  enterEventLoop();\n" +
+				"  // Then wait some more to give the agents a fair chance to wait.  If we don't,\n" +
+				"  // we risk sending the wakeup before agents are sleeping, and we hang.\n" +
+				"  sleep(500).then(function() {\n" +
+				"    // There's a slight risk we'll fail to wake the desired count, if the preceding\n" +
+				"    // sleep() took much longer than anticipated and workers have started timing\n" +
+				"    // out.\n" +
+				"    assert.sameValue(Atomics.wake(ia, 0, WAKECOUNT), WAKECOUNT);\n" +
+				"  });\n" +
+				"}, 500);\n" +
+				"function check_results() {\n" +
+				"  if (rs.length == NUMAGENT) {\n" +
+				"    rs.sort();\n" +
+				"    for (let i=0; i < WAKECOUNT; i++)\n" +
+				"      assert.sameValue(rs[i], \"ok\");\n" +
+				"    for (let i=WAKECOUNT; i < NUMAGENT; i++)\n" +
+				"      assert.sameValue(rs[i], \"timed-out\");\n" +
+				"    exitEventLoop(ws);\n" +
+				"  }\n" +
+				"}\n" +
+				"function waitUntil(ia, k, value) {\n" +
+				"  var i = 0;\n" +
+				"  while (Atomics.load(ia, k) !== value && i < 15) {\n" +
+				"    sleep(300);\n" +
+				"    i++;\n" +
+				"  }\n" +
+				"  assert.sameValue(Atomics.load(ia, k), value, \"All agents are running\");\n" +
+				"}\n";
+    }
+    window.addEventListener('load', function(e) {
+      async_test(function(t) {
+        run_in_iframe_strict(test262, attrs, t);
+      }, 'IFrame (strict): js/test262/built-ins/Atomics/wake/wake-two.html');
+      async_test(function(t) {
+        run_in_iframe(test262, attrs, t);
+      }, 'IFrame: js/test262/built-ins/Atomics/wake/wake-two.html');
+      async_test(function(t) {
+        run_in_window_strict(test262, attrs, t);
+      }, 'Window (strict): js/test262/built-ins/Atomics/wake/wake-two.html');
+      async_test(function(t) {
+        run_in_window(test262, attrs, t);
+      }, 'Window: js/test262/built-ins/Atomics/wake/wake-two.html');
+      async_test(function(t) {
+        run_in_worker_strict(test262, attrs, t);
+      }, 'Worker (strict): js/test262/built-ins/Atomics/wake/wake-two.html');
+      async_test(function(t) {
+        run_in_worker(test262, attrs, t);
+      }, 'Worker: js/test262/built-ins/Atomics/wake/wake-two.html');
+      async_test(function(t) {
+        run_in_shared_worker_strict(test262, attrs, t);
+      }, 'SharedWorker (strict): js/test262/built-ins/Atomics/wake/wake-two.html');
+      async_test(function(t) {
+        run_in_shared_worker(test262, attrs, t);
+      }, 'SharedWorker: js/test262/built-ins/Atomics/wake/wake-two.html');
+    });
+  </script>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>js/test262/built-ins/Atomics/wait/no-spurious-wakeup.html</title>
+
+    <script src="/resources/testharness.js"></script>
+    <script src="/resources/testharnessreport.js"></script>
+    <script src="/resources/test262-worker-harness.js?pipe=sub"></script>
+    <script src="/resources/test262-harness.js"></script>
+
+  </head>
+  <body>
+  </body>
+  <script type="text/javascript">
+    // Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+    // This code is governed by the BSD license found in the LICENSE file.
+
+    /*---
+    esid: sec-atomics.wait
+    description: >
+      Test that Atomics.wait actually waits and does not spuriously wake
+      up when the memory value is changed.
+    includes: [atomicsHelper.js]
+    ---*/
+    let attrs = {"includes": ["atomicsHelper.js"]};
+    function test262() {
+      return "" +
+        "let w = createWorkerFromString(`\n" +
+        "    onmessage = function(e) {\n" +
+        "      let ia = new Int32Array(e.data[0]);\n" +
+        "      let then = Date.now();\n" +
+        "      Atomics.wait(ia, 0, 0);\n" +
+        "      let diff = Date.now() - then; // Should be about 1000 ms but can be more (in fact most times is slightly lower than 1000 ms).\n" +
+        "      postMessage([diff]);\n" +
+        "    }\n" +
+        "`);\n" +
+        "w.onmessage = function(e) {\n" +
+        "  assert.sameValue(e.data[0] >= 900, true);\n" +
+        "  exitEventLoop(w);\n" +
+        "}\n" +
+        "let ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));\n" +
+        "w.postMessage([ia.buffer]);\n" +
+        "setTimeout(function() {      // Give the agent a chance to wait\n" +
+        "  Atomics.store(ia, 0, 1);        // Change the value, should not wake the agent\n" +
+        "  setTimeout(function() {              // Wait some more so that we can tell\n" +
+        "    Atomics.wake(ia, 0);          // Really wake it up\n" +
+        "  }, 500);\n" +
+        "}, 500);\n" +
+        "enterEventLoop();\n";
+    }
+    window.addEventListener('load', function(e) {
+      async_test(function(t) {
+        run_in_iframe_strict(test262, attrs, t);
+      }, 'IFrame (strict): js/test262/built-ins/Atomics/wait/no-spurious-wakeup.html');
+      async_test(function(t) {
+        run_in_iframe(test262, attrs, t);
+      }, 'IFrame: js/test262/built-ins/Atomics/wait/no-spurious-wakeup.html');
+      async_test(function(t) {
+        run_in_window_strict(test262, attrs, t);
+      }, 'Window (strict): js/test262/built-ins/Atomics/wait/no-spurious-wakeup.html');
+      async_test(function(t) {
+        run_in_window(test262, attrs, t);
+      }, 'Window: js/test262/built-ins/Atomics/wait/no-spurious-wakeup.html');
+      async_test(function(t) {
+        run_in_worker_strict(test262, attrs, t);
+      }, 'Worker (strict): js/test262/built-ins/Atomics/wait/no-spurious-wakeup.html');
+      async_test(function(t) {
+        run_in_worker(test262, attrs, t);
+      }, 'Worker: js/test262/built-ins/Atomics/wait/no-spurious-wakeup.html');
+      async_test(function(t) {
+        run_in_shared_worker_strict(test262, attrs, t);
+      }, 'SharedWorker (strict): js/test262/built-ins/Atomics/wait/no-spurious-wakeup.html');
+      async_test(function(t) {
+        run_in_shared_worker(test262, attrs, t);
+      }, 'SharedWorker: js/test262/built-ins/Atomics/wait/no-spurious-wakeup.html');
+    });
+  </script>
+</html>
