@@ -1632,6 +1632,20 @@ inline void RecordedEvent::StorePattern(PatternStorage& aDestination,
       store->mStops = pat->mStops.get();
       return;
     }
+    case PatternType::CONIC_GRADIENT: {
+      ConicGradientPatternStorage* store =
+          reinterpret_cast<ConicGradientPatternStorage*>(
+              &aDestination.mStorage);
+      const ConicGradientPattern* pat =
+          static_cast<const ConicGradientPattern*>(&aSource);
+      store->mCenter1 = pat->mCenter1;
+      store->mCenter2 = pat->mCenter2;
+      store->mRadius1 = pat->mRadius1;
+      store->mRadius2 = pat->mRadius2;
+      store->mMatrix = pat->mMatrix;
+      store->mStops = pat->mStops.get();
+      return;
+    }
     case PatternType::SURFACE: {
       SurfacePatternStorage* store =
           reinterpret_cast<SurfacePatternStorage*>(&aDestination.mStorage);
@@ -1772,6 +1786,14 @@ inline void RecordedEvent::OutputSimplePatternInfo(
           reinterpret_cast<const RadialGradientPatternStorage*>(
               &aStorage.mStorage);
       aOutput << "RadialGradient (Center 1: (" << store->mCenter1.x << ", "
+              << store->mCenter2.y << ") Radius 2: " << store->mRadius2;
+      return;
+    }
+    case PatternType::CONIC_GRADIENT: {
+      const ConicGradientPatternStorage* store =
+          reinterpret_cast<const ConicGradientPatternStorage*>(
+              &aStorage.mStorage);
+      aOutput << "ConicGradient (Center 1: (" << store->mCenter1.x << ", "
               << store->mCenter2.y << ") Radius 2: " << store->mRadius2;
       return;
     }
@@ -2110,6 +2132,18 @@ struct GenericPattern {
             storage->mMatrix);
         return mPattern;
       }
+      case PatternType::CONIC_GRADIENT: {
+        ConicGradientPatternStorage* storage =
+            reinterpret_cast<ConicGradientPatternStorage*>(
+                &mStorage->mStorage);
+        mPattern = new (mConGradPat) ConicGradientPattern(
+            storage->mCenter1, storage->mCenter2, storage->mRadius1,
+            storage->mRadius2,
+            storage->mStops ? mTranslator->LookupGradientStops(storage->mStops)
+                            : nullptr,
+            storage->mMatrix);
+        return mPattern;
+      }
       default:
         return new (mColPat) ColorPattern(Color());
     }
@@ -2121,6 +2155,7 @@ struct GenericPattern {
     char mColPat[sizeof(ColorPattern)];
     char mLinGradPat[sizeof(LinearGradientPattern)];
     char mRadGradPat[sizeof(RadialGradientPattern)];
+    char mConGradPat[sizeof(ConicGradientPattern)];
     char mSurfPat[sizeof(SurfacePattern)];
   };
 

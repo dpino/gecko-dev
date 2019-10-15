@@ -1616,6 +1616,7 @@ impl TileCacheInstance {
             PrimitiveInstanceKind::NormalBorder { .. } |
             PrimitiveInstanceKind::LinearGradient { .. } |
             PrimitiveInstanceKind::RadialGradient { .. } |
+            PrimitiveInstanceKind::ConicGradient { .. } |
             PrimitiveInstanceKind::Backdrop { .. } => {
                 // These don't contribute dependencies
             }

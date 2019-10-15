@@ -190,6 +190,7 @@ impl Parse for Gradient {
         enum Shape {
             Linear,
             Radial,
+            Conic,
         }
 
         // FIXME: remove clone() when lifetimes are non-lexical
@@ -235,6 +236,26 @@ impl Parse for Gradient {
             "-moz-repeating-radial-gradient" => {
                 Some((Shape::Radial, true, GradientCompatMode::Moz))
             },
+            "conic-gradient" => {
+                Some((Shape::Conic, false, GradientCompatMode::Modern))
+            },
+            "-webkit-conic-gradient" => {
+                Some((Shape::Conic, false, GradientCompatMode::WebKit))
+            }
+            #[cfg(feature = "gecko")]
+            "-moz-conic-gradient" => {
+                Some((Shape::Conic, false, GradientCompatMode::Moz))
+            },
+            "repeating-conic-gradient" => {
+                Some((Shape::Conic, true, GradientCompatMode::Modern))
+            },
+            "-webkit-repeating-conic-gradient" => {
+                Some((Shape::Conic, true, GradientCompatMode::WebKit))
+            },
+            #[cfg(feature = "gecko")]
+            "-moz-repeating-conic-gradient" => {
+                Some((Shape::Conic, true, GradientCompatMode::Moz))
+            },
             "-webkit-gradient" => {
                 return input.parse_nested_block(|i| {
                     Self::parse_webkit_gradient_argument(context, i)
@@ -254,6 +275,7 @@ impl Parse for Gradient {
             let shape = match shape {
                 Shape::Linear => GradientKind::parse_linear(context, i, &mut compat_mode)?,
                 Shape::Radial => GradientKind::parse_radial(context, i, &mut compat_mode)?,
+                Shape::Conic => GradientKind::parse_conic(context, i, &mut compat_mode)?,
             };
             let items = GradientItem::parse_comma_separated(context, i)?;
             Ok((shape, items))
@@ -421,6 +443,28 @@ impl Gradient {
                 let kind = generic::GradientKind::Radial(shape, position);
                 (kind, reverse_stops)
             },
+            "conic" => {
+                let first_point = Point::parse(context, input)?;
+                input.expect_comma()?;
+                let first_radius = Number::parse_non_negative(context, input)?;
+                input.expect_comma()?;
+                let second_point = Point::parse(context, input)?;
+                input.expect_comma()?;
+                let second_radius = Number::parse_non_negative(context, input)?;
+
+                let (reverse_stops, point, radius) = if second_radius.value >= first_radius.value {
+                    (false, second_point, second_radius)
+                } else {
+                    (true, first_point, first_radius)
+                };
+
+                let rad = Circle::Radius(NonNegative(Length::from_px(radius.value)));
+                let shape = generic::EndingShape::Circle(rad);
+                let position: Position = point.into();
+
+                let kind = generic::GradientKind::Conic(shape, position);
+                (kind, reverse_stops)
+            },
             _ => {
                 let e = SelectorParseErrorKind::UnexpectedIdent(ident.clone());
                 return Err(input.new_custom_error(e));
@@ -576,6 +620,43 @@ impl GradientKind {
 
         let position = position.unwrap_or(Position::center());
         Ok(generic::GradientKind::Radial(shape, position))
+    }
+    fn parse_conic<'i, 't>(
+        context: &ParserContext,
+        input: &mut Parser<'i, 't>,
+        compat_mode: &mut GradientCompatMode,
+    ) -> Result<Self, ParseError<'i>> {
+        let (shape, position) = match *compat_mode {
+            GradientCompatMode::Modern => {
+                let shape = input.try(|i| EndingShape::parse(context, i, *compat_mode));
+                let position = input.try(|i| {
+                    i.expect_ident_matching("at")?;
+                    Position::parse(context, i)
+                });
+                (shape, position.ok())
+            },
+            _ => {
+                let position = input.try(|i| Position::parse(context, i));
+                let shape = input.try(|i| {
+                    if position.is_ok() {
+                        i.expect_comma()?;
+                    }
+                    EndingShape::parse(context, i, *compat_mode)
+                });
+                (shape, position.ok())
+            },
+        };
+
+        if shape.is_ok() || position.is_some() {
+            input.expect_comma()?;
+        }
+
+        let shape = shape.unwrap_or({
+            generic::EndingShape::Ellipse(Ellipse::Extent(ShapeExtent::FarthestCorner))
+        });
+
+        let position = position.unwrap_or(Position::center());
+        Ok(generic::GradientKind::Conic(shape, position))
     }
 }
 

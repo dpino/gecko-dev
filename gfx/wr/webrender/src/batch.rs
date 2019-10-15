@@ -58,6 +58,7 @@ pub enum BrushBatchKind {
     },
     YuvImage(ImageBufferKind, YuvFormat, ColorDepth, YuvColorSpace, ColorRange),
     RadialGradient,
+    ConicGradient,
     LinearGradient,
 }
 
@@ -2329,6 +2330,87 @@ impl BatchBuilder {
                     );
                 }
             }
+            PrimitiveInstanceKind::ConicGradient { data_handle, ref visible_tiles_range, .. } => {
+                let prim_data = &ctx.data_stores.conic_grad[data_handle];
+                let specified_blend_mode = BlendMode::PremultipliedAlpha;
+
+                let mut prim_header = PrimitiveHeader {
+                    local_rect: prim_rect,
+                    local_clip_rect: prim_info.combined_local_clip_rect,
+                    specific_prim_address: GpuCacheAddress::INVALID,
+                    transform_id,
+                };
+
+                if visible_tiles_range.is_empty() {
+                    let non_segmented_blend_mode = if !prim_data.opacity.is_opaque ||
+                        prim_info.clip_task_index != ClipTaskIndex::INVALID ||
+                        transform_kind == TransformedRectKind::Complex
+                    {
+                        specified_blend_mode
+                    } else {
+                        BlendMode::None
+                    };
+
+                    let batch_params = BrushBatchParameters::shared(
+                        BrushBatchKind::ConicGradient,
+                        BatchTextures::no_texture(),
+                        [
+                            prim_data.stops_handle.as_int(gpu_cache),
+                            0,
+                            0,
+                            0,
+                        ],
+                        0,
+                    );
+
+                    prim_header.specific_prim_address = gpu_cache.get_address(&prim_data.gpu_cache_handle);
+
+                    let prim_header_index = prim_headers.push(
+                        &prim_header,
+                        z_id,
+                        batch_params.prim_user_data,
+                    );
+
+                    let segments = if prim_data.brush_segments.is_empty() {
+                        None
+                    } else {
+                        Some(prim_data.brush_segments.as_slice())
+                    };
+
+                    self.add_segmented_prim_to_batch(
+                        segments,
+                        prim_data.opacity,
+                        &batch_params,
+                        specified_blend_mode,
+                        non_segmented_blend_mode,
+                        batch_features,
+                        prim_header_index,
+                        bounding_rect,
+                        transform_kind,
+                        render_tasks,
+                        z_id,
+                        prim_info.clip_task_index,
+                        prim_vis_mask,
+                        ctx,
+                    );
+                } else {
+                    let visible_tiles = &ctx.scratch.gradient_tiles[*visible_tiles_range];
+
+                    self.add_gradient_tiles(
+                        visible_tiles,
+                        &prim_data.stops_handle,
+                        BrushBatchKind::ConicGradient,
+                        specified_blend_mode,
+                        bounding_rect,
+                        clip_task_address.unwrap(),
+                        gpu_cache,
+                        &prim_header,
+                        prim_headers,
+                        z_id,
+                        prim_vis_mask,
+                    );
+                }
+            }
             PrimitiveInstanceKind::Backdrop { data_handle } => {
                 let prim_data = &ctx.data_stores.backdrop[data_handle];
                 let backdrop_pic_index = prim_data.kind.pic_index;
@@ -2707,6 +2789,7 @@ impl PrimitiveInstance {
             PrimitiveInstanceKind::Rectangle { .. } |
             PrimitiveInstanceKind::LinearGradient { .. } |
             PrimitiveInstanceKind::RadialGradient { .. } |
+            PrimitiveInstanceKind::ConicGradient { .. } |
             PrimitiveInstanceKind::PushClipChain |
             PrimitiveInstanceKind::PopClipChain |
             PrimitiveInstanceKind::Clear { .. } |

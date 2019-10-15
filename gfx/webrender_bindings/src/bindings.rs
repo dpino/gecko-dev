@@ -3146,6 +3146,49 @@ pub extern "C" fn wr_dp_push_radial_gradient(state: &mut WrState,
 }
 
 #[no_mangle]
+pub extern "C" fn wr_dp_push_conic_gradient(state: &mut WrState,
+                                            rect: LayoutRect,
+                                            clip: LayoutRect,
+                                            is_backface_visible: bool,
+                                            parent: &WrSpaceAndClipChain,
+                                            center: LayoutPoint,
+                                            radius: LayoutSize,
+                                            stops: *const GradientStop,
+                                            stops_count: usize,
+                                            extend_mode: ExtendMode,
+                                            tile_size: LayoutSize,
+                                            tile_spacing: LayoutSize) {
+    debug_assert!(unsafe { is_in_main_thread() });
+
+    let stops_slice = unsafe { make_slice(stops, stops_count) };
+    let stops_vector = stops_slice.to_owned();
+
+    let gradient = state.frame_builder
+                        .dl_builder
+                        .create_conic_gradient(center.into(),
+                                               radius.into(),
+                                               stops_vector,
+                                               extend_mode.into());
+
+    let space_and_clip = parent.to_webrender(state.pipeline_id);
+
+    let prim_info = CommonItemProperties {
+        clip_rect: clip,
+        clip_id: space_and_clip.clip_id,
+        spatial_id: space_and_clip.spatial_id,
+        flags: prim_flags(is_backface_visible),
+        hit_info: state.current_tag,
+    };
+
+    state.frame_builder.dl_builder.push_conic_gradient(
+        &prim_info,
+        rect,
+        gradient,
+        tile_size,
+        tile_spacing);
+}
+
+#[no_mangle]
 pub extern "C" fn wr_dp_push_box_shadow(state: &mut WrState,
                                         _rect: LayoutRect,
                                         clip: LayoutRect,

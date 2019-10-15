@@ -184,6 +184,11 @@ static bool PatternIsCompatible(const Pattern& aPattern) {
           static_cast<const RadialGradientPattern&>(aPattern);
       return pattern.mStops->GetBackendType() == BackendType::CAIRO;
     }
+    case PatternType::CONIC_GRADIENT: {
+      const ConicGradientPattern& pattern =
+          static_cast<const ConicGradientPattern&>(aPattern);
+      return pattern.mStops->GetBackendType() == BackendType::CAIRO;
+    }
     default:
       return true;
   }
@@ -502,6 +507,30 @@ static cairo_pattern_t* GfxPatternToCairoPattern(const Pattern& aPattern,
       const RadialGradientPattern& pattern =
           static_cast<const RadialGradientPattern&>(aPattern);
 
+      pat = cairo_pattern_create_radial(pattern.mCenter1.x, pattern.mCenter1.y,
+                                        pattern.mRadius1, pattern.mCenter2.x,
+                                        pattern.mCenter2.y, pattern.mRadius2);
+
+      MOZ_ASSERT(pattern.mStops->GetBackendType() == BackendType::CAIRO);
+      GradientStopsCairo* cairoStops =
+          static_cast<GradientStopsCairo*>(pattern.mStops.get());
+      cairo_pattern_set_extend(
+          pat, GfxExtendToCairoExtend(cairoStops->GetExtendMode()));
+
+      matrix = &pattern.mMatrix;
+
+      const std::vector<GradientStop>& stops = cairoStops->GetStops();
+      for (size_t i = 0; i < stops.size(); ++i) {
+        CairoPatternAddGradientStop(pat, stops[i]);
+      }
+
+      break;
+    }
+    case PatternType::CONIC_GRADIENT: {
+      const ConicGradientPattern& pattern =
+          static_cast<const ConicGradientPattern&>(aPattern);
+
+      // TODO: Implement visualuzation of conic gradient.
       pat = cairo_pattern_create_radial(pattern.mCenter1.x, pattern.mCenter1.y,
                                         pattern.mRadius1, pattern.mCenter2.x,
                                         pattern.mCenter2.y, pattern.mRadius2);

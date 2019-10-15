@@ -532,6 +532,7 @@ pub struct Shaders {
     brush_mix_blend: BrushShader,
     brush_yuv_image: Vec<Option<BrushShader>>,
     brush_radial_gradient: BrushShader,
+    brush_conic_gradient: BrushShader,
     brush_linear_gradient: BrushShader,
 
     /// These are "cache clip shaders". These shaders are used to
@@ -610,6 +611,20 @@ impl Shaders {
 
         let brush_radial_gradient = BrushShader::new(
             "brush_radial_gradient",
+            device,
+            if options.enable_dithering {
+               &[DITHERING_FEATURE]
+            } else {
+               &[]
+            },
+            options.precache_flags,
+            false /* advanced blend */,
+            false /* dual source */,
+            use_pixel_local_storage,
+        )?;
+
+        let brush_conic_gradient = BrushShader::new(
+            "brush_conic_gradient",
             device,
             if options.enable_dithering {
                &[DITHERING_FEATURE]
@@ -889,6 +904,7 @@ impl Shaders {
             brush_mix_blend,
             brush_yuv_image,
             brush_radial_gradient,
+            brush_conic_gradient,
             brush_linear_gradient,
             cs_clip_rectangle_slow,
             cs_clip_rectangle_fast,
@@ -940,6 +956,9 @@ impl Shaders {
                     BrushBatchKind::RadialGradient => {
                         &mut self.brush_radial_gradient
                     }
+                    BrushBatchKind::ConicGradient => {
+                        &mut self.brush_conic_gradient
+                    }
                     BrushBatchKind::LinearGradient => {
                         &mut self.brush_linear_gradient
                     }
@@ -972,6 +991,7 @@ impl Shaders {
         self.brush_blend.deinit(device);
         self.brush_mix_blend.deinit(device);
         self.brush_radial_gradient.deinit(device);
+        self.brush_conic_gradient.deinit(device);
         self.brush_linear_gradient.deinit(device);
         self.cs_clip_rectangle_slow.deinit(device);
         self.cs_clip_rectangle_fast.deinit(device);

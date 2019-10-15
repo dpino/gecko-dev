@@ -476,6 +476,15 @@ class DisplayListBuilder final {
                           const wr::LayoutSize aTileSize,
                           const wr::LayoutSize aTileSpacing);
 
+  void PushConicGradient(const wr::LayoutRect& aBounds,
+                         const wr::LayoutRect& aClip, bool aIsBackfaceVisible,
+                         const wr::LayoutPoint& aCenter,
+                         const wr::LayoutSize& aRadius,
+                         const nsTArray<wr::GradientStop>& aStops,
+                         wr::ExtendMode aExtendMode,
+                         const wr::LayoutSize aTileSize,
+                         const wr::LayoutSize aTileSpacing);
+
   void PushImage(const wr::LayoutRect& aBounds, const wr::LayoutRect& aClip,
                  bool aIsBackfaceVisible, wr::ImageRendering aFilter,
                  wr::ImageKey aImage, bool aPremultipliedAlpha = true,

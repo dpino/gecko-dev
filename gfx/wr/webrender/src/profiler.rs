@@ -578,6 +578,7 @@ impl BackendProfileCounters {
                 normal_border: ResourceProfileCounter::new("Interned normal borders"),
                 picture: ResourceProfileCounter::new("Interned pictures"),
                 radial_grad: ResourceProfileCounter::new("Interned radial gradients"),
+                conic_grad: ResourceProfileCounter::new("Interned conic gradients"),
                 text_run: ResourceProfileCounter::new("Interned text runs"),
                 yuv_image: ResourceProfileCounter::new("Interned YUV images"),
                 clip: ResourceProfileCounter::new("Interned clips"),

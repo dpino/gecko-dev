@@ -1203,11 +1203,24 @@ void nsCSSGradientRenderer::BuildWebRenderDisplayItems(
         mozilla::wr::ToLayoutPoint(lineEnd), stops, extendMode,
         mozilla::wr::ToLayoutSize(firstTileBounds.Size()),
         mozilla::wr::ToLayoutSize(tileSpacing));
-  } else {
+  } else if (mGradient->kind.IsRadial()) {
+    printf("### isRadial\n"); 
     gradientRadius.width *= srcTransform.width;
     gradientRadius.height *= srcTransform.height;
 
     aBuilder.PushRadialGradient(
+        mozilla::wr::ToLayoutRect(gradientBounds),
+        mozilla::wr::ToLayoutRect(clipBounds), aIsBackfaceVisible,
+        mozilla::wr::ToLayoutPoint(lineStart),
+        mozilla::wr::ToLayoutSize(gradientRadius), stops, extendMode,
+        mozilla::wr::ToLayoutSize(firstTileBounds.Size()),
+        mozilla::wr::ToLayoutSize(tileSpacing));
+  } else if (mGradient->kind.IsConic()) {
+    printf("### isConic\n"); 
+    gradientRadius.width *= srcTransform.width;
+    gradientRadius.height *= srcTransform.height;
+
+    aBuilder.PushConicGradient(
         mozilla::wr::ToLayoutRect(gradientBounds),
         mozilla::wr::ToLayoutRect(clipBounds), aIsBackfaceVisible,
         mozilla::wr::ToLayoutPoint(lineStart),

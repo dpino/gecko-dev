@@ -99,6 +99,47 @@ impl GradientBuilder {
         }
     }
 
+    /// Produce a conic gradient, normalize the stops.
+    ///
+    /// Will replace the gradient with a single color
+    /// if the radius negative.
+    pub fn conic_gradient(
+        &mut self,
+        center: LayoutPoint,
+        radius: LayoutSize,
+        extend_mode: di::ExtendMode,
+    ) -> di::ConicGradient {
+        if radius.width <= 0.0 || radius.height <= 0.0 {
+            // The shader cannot handle a non positive radius. So
+            // reuse the stops vector and construct an equivalent
+            // gradient.
+            let last_color = self.stops.last().unwrap().color;
+
+            self.stops.clear();
+            self.stops.push(di::GradientStop { offset: 0.0, color: last_color, });
+            self.stops.push(di::GradientStop { offset: 1.0, color: last_color, });
+
+            return di::ConicGradient {
+                center,
+                radius: LayoutSize::new(1.0, 1.0),
+                start_offset: 0.0,
+                end_offset: 1.0,
+                extend_mode,
+            };
+        }
+
+        let (start_offset, end_offset) =
+            self.normalize(extend_mode);
+
+        di::ConicGradient {
+            center,
+            radius,
+            start_offset,
+            end_offset,
+            extend_mode,
+        }
+    }
+
     /// Gradients can be defined with stops outside the range of [0, 1]
     /// when this happens the gradient needs to be normalized by adjusting
     /// the gradient stops and gradient line into an equivalent gradient

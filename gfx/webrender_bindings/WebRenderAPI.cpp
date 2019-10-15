@@ -1091,6 +1091,18 @@ void DisplayListBuilder::PushRadialGradient(
       aStops.Length(), aExtendMode, aTileSize, aTileSpacing);
 }
 
+void DisplayListBuilder::PushConicGradient(
+    const wr::LayoutRect& aBounds, const wr::LayoutRect& aClip,
+    bool aIsBackfaceVisible, const wr::LayoutPoint& aCenter,
+    const wr::LayoutSize& aRadius, const nsTArray<wr::GradientStop>& aStops,
+    wr::ExtendMode aExtendMode, const wr::LayoutSize aTileSize,
+    const wr::LayoutSize aTileSpacing) {
+  wr_dp_push_conic_gradient(
+      mWrState, aBounds, MergeClipLeaf(aClip), aIsBackfaceVisible,
+      &mCurrentSpaceAndClipChain, aCenter, aRadius, aStops.Elements(),
+      aStops.Length(), aExtendMode, aTileSize, aTileSpacing);
+}
+
 void DisplayListBuilder::PushImage(
     const wr::LayoutRect& aBounds, const wr::LayoutRect& aClip,
     bool aIsBackfaceVisible, wr::ImageRendering aFilter, wr::ImageKey aImage,

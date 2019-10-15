@@ -81,7 +81,7 @@ pub struct GenericGradient<
     Position,
     Color,
 > {
-    /// Gradients can be linear or radial.
+    /// Gradients can be linear, radial or conic.
     pub kind: GenericGradientKind<
         LineDirection,
         NonNegativeLength,
@@ -123,6 +123,10 @@ pub enum GenericGradientKind<
     Linear(LineDirection),
     /// A radial gradient.
     Radial(
+        GenericEndingShape<NonNegativeLength, NonNegativeLengthPercentage>,
+        Position,
+    ),
+    Conic(
         GenericEndingShape<NonNegativeLength, NonNegativeLengthPercentage>,
         Position,
     ),
@@ -388,6 +392,28 @@ where
                 }
                 false
             },
+            GradientKind::Conic(ref shape, ref position) => {
+                let omit_shape = match *shape {
+                    EndingShape::Ellipse(Ellipse::Extent(ShapeExtent::Cover)) |
+                    EndingShape::Ellipse(Ellipse::Extent(ShapeExtent::FarthestCorner)) => true,
+                    _ => false,
+                };
+                if self.compat_mode == GradientCompatMode::Modern {
+                    if !omit_shape {
+                        shape.to_css(dest)?;
+                        dest.write_str(" ")?;
+                    }
+                    dest.write_str("at ")?;
+                    position.to_css(dest)?;
+                } else {
+                    position.to_css(dest)?;
+                    if !omit_shape {
+                        dest.write_str(", ")?;
+                        shape.to_css(dest)?;
+                    }
+                }
+                false
+            },
         };
         for item in &*self.items {
             if !skip_comma {
@@ -405,6 +431,7 @@ impl<D, L, LoP, P> GradientKind<D, L, LoP, P> {
         match *self {
             GradientKind::Linear(..) => "linear",
             GradientKind::Radial(..) => "radial",
+            GradientKind::Conic(..) => "conic",
         }
     }
 }

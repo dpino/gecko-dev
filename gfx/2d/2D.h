@@ -287,6 +287,37 @@ class RadialGradientPattern : public Pattern {
 };
 
 /**
+ * This class is used for Conic Gradient Patterns, the gradient stops are
+ * stored in a separate object and are backend dependent. This class itself
+ * may be used on the stack.
+ */
+class ConicGradientPattern : public Pattern {
+ public:
+  /// For constructor parameter description, see member data documentation.
+  ConicGradientPattern(const Point& aCenter1, const Point& aCenter2,
+                        Float aRadius1, Float aRadius2, GradientStops* aStops,
+                        const Matrix& aMatrix = Matrix())
+      : mCenter1(aCenter1),
+        mCenter2(aCenter2),
+        mRadius1(aRadius1),
+        mRadius2(aRadius2),
+        mStops(aStops),
+        mMatrix(aMatrix) {}
+
+  PatternType GetType() const override { return PatternType::CONIC_GRADIENT; }
+
+  Point mCenter1;  //!< Center of the inner (focal) circle.
+  Point mCenter2;  //!< Center of the outer circle.
+  Float mRadius1;  //!< Radius of the inner (focal) circle.
+  Float mRadius2;  //!< Radius of the outer circle.
+  RefPtr<GradientStops>
+      mStops;      /**< GradientStops object for this gradient, this
+                        should match the backend type of the draw target
+                        this pattern will be used with. */
+  Matrix mMatrix;  //!< A matrix that transforms the pattern into user space
+};
+
+/**
  * This class is used for Surface Patterns, they wrap a surface and a
  * repetition mode for the surface. This may be used on the stack.
  */
@@ -1448,8 +1479,8 @@ class DrawTarget : public external::AtomicRefCounted<DrawTarget> {
 
   /**
    * Create a GradientStops object that holds information about a set of
-   * gradient stops, this object is required for linear or radial gradient
-   * patterns to represent the color stops in the gradient.
+   * gradient stops, this object is required for linear, radial or conic 
+   * gradient patterns to represent the color stops in the gradient.
    *
    * @param aStops An array of gradient stops
    * @param aNumStops Number of stops in the array aStops

@@ -717,6 +717,11 @@ void DrawTargetWrapAndRecord::EnsurePatternDependenciesStored(
           static_cast<const RadialGradientPattern*>(&aPattern)->mStops));
       return;
     }
+    case PatternType::CONIC_GRADIENT: {
+      MOZ_ASSERT(mRecorder->HasStoredObject(
+          static_cast<const ConicradientPattern*>(&aPattern)->mStops));
+      return;
+    }
     case PatternType::SURFACE: {
       const SurfacePattern* pat = static_cast<const SurfacePattern*>(&aPattern);
       EnsureSurfaceStored(mRecorder, pat->mSurface,
