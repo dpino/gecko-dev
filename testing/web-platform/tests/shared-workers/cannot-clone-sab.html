@@ -1,0 +1,26 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script>
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    var worker = new SharedWorker('worker/basic.js');
+
+    worker.port.start();
+
+    var sab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+    var ia = new Int32Array(sab);
+    worker.onmessage = function(e) {
+      assert_unreached();
+    }
+    assert_throws(TypeError(), function() {
+      worker.port.postMessage([ia]);
+    }, "A SharedArrayBuffer cannot be cloned in this context");
+    t.done();
+  }, "cannot-clone-shared-array-buffer-in-a-shared-worker");
+});
+
+</script>
