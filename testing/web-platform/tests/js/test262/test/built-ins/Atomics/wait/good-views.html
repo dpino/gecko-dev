@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>js/test262/built-ins/Atomics/wait/good-views.html</title>
+
+    <script src="/resources/testharness.js"></script>
+    <script src="/resources/testharnessreport.js"></script>
+    <script src="/resources/test262-worker-harness.js?pipe=sub"></script>
+    <script src="/resources/test262-harness.js"></script>
+
+  </head>
+  <body>
+  </body>
+  <script type="text/javascript">
+    // Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+    // This code is governed by the BSD license found in the LICENSE file.
+
+    /*---
+    esid: sec-atomics.wait
+    description: >
+      Test Atomics.wait on arrays that allow atomic operations,
+      in an Agent that is allowed to wait.
+    ---*/
+    let attrs = {};
+    function test262() {
+      return "" +
+        "let rs = [];\n" +
+        "let A = createWorkerFromString(`\n" +
+        "    onmessage = function(e) {\n" +
+        "      let view = e.data[0];\n" +
+        "      let ret = \"A \" + Atomics.wait(view, 0, 0, 0);\n" +
+        "      postMessage([ret]);\n" +
+        "    }\n" +
+        "    `);\n" +
+        "A.onmessage = function(e) {\n" +
+        "  rs.push(e.data[0]);\n" +
+        "  check_done();\n" +
+        "}\n" +
+        "let B = createWorkerFromString(`\n" +
+        "    onmessage = function(e) {\n" +
+        "      let view = e.data[0];\n" +
+        "      let ret = \"B \" + Atomics.wait(view, 0, 37, 0);\n" +
+        "      postMessage([ret]);\n" +
+        "    }\n" +
+        "    `);\n" +
+        "B.onmessage = function(e) {\n" +
+        "  rs.push(e.data[0]);\n" +
+        "  check_done();\n" +
+        "}\n" +
+        "let C = createWorkerFromString(`\n" +
+        "    onmessage = function(e) {\n" +
+        "      let view = e.data[0];\n" +
+        "      let idx = e.data[1];\n" +
+        "      let ret = \"C \" + Atomics.wait(view, idx, 0);\n" +
+        "      postMessage([ret]);\n" +
+        "    }\n" +
+        "    `);\n" +
+        "C.onmessage = function(e) {\n" +
+        "  rs.push(e.data[0]);\n" +
+        "  check_done();\n" +
+        "}\n" +
+        "function check_done() {\n" +
+        "  if (rs.length == 7) {\n" +
+        "    rs.sort();\n" +
+        "    assert.sameValue(rs[0] == \"A timed-out\", true);\n" +
+        "    assert.sameValue(rs[1] == \"B not-equal\", true);\n" +
+        "    assert.sameValue(rs[2] == \"C not-equal\", true);\n" +
+        "    assert.sameValue(rs[3] == \"C not-equal\", true);\n" +
+        "    assert.sameValue(rs[4] == \"C not-equal\", true);\n" +
+        "    assert.sameValue(rs[5] == \"C not-equal\", true);\n" +
+        "    assert.sameValue(rs[6] == \"C not-equal\", true);\n" +
+        "    exitEventLoop([A, B, C]);\n" +
+        "  }\n" +
+        "}\n" +
+        "let sab = new SharedArrayBuffer(1024);\n" +
+        "let view = new Int32Array(sab, 32, 20);\n" +
+        "A.postMessage([view]);\n" +
+        "B.postMessage([view]);\n" +
+        "let good_indices = [\n" +
+        "  (view) => 0/-1,\n" +
+        "  (view) => '-0',\n" +
+        "  (view) => view.length - 1,\n" +
+        "  (view) => ({ valueOf: () => 0 }),\n" +
+        "  (view) => ({ toString: () => '0', valueOf: false }) // non-callable valueOf triggers invocation of toString\n" +
+        "];\n" +
+        "setTimeout(function() {\n" +
+        "  for (let idxGen of good_indices) {\n" +
+        "    let idx = idxGen(view);\n" +
+        "    view[idx] = 0;\n" +
+        "    // Firefox cannot apply clone algorithm on an Object.\n" +
+        "    // See https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm\n" +
+        "    if (typeof idx == \"object\") {\n" +
+        "      idx = idx.valueOf ? idx.valueOf() : idx.toString();\n" +
+        "    }\n" +
+        "    Atomics.store(view, idx, 37);\n" +
+        "    C.postMessage([view, idx]);\n" +
+        "  }\n" +
+        "}, 500);\n" +
+        "enterEventLoop();\n";
+    }
+    window.addEventListener('load', function(e) {
+      async_test(function(t) {
+        run_in_iframe_strict(test262, attrs, t);
+      }, 'IFrame -> Worker (strict): js/test262/built-ins/Atomics/wait/good-views.html');
+      async_test(function(t) {
+        run_in_iframe(test262, attrs, t);
+      }, 'IFrame -> Worker: js/test262/built-ins/Atomics/wait/good-views.html');
+      async_test(function(t) {
+        run_in_window_strict(test262, attrs, t);
+      }, 'Window -> Worker (strict): js/test262/built-ins/Atomics/wait/good-views.html');
+      async_test(function(t) {
+        run_in_window(test262, attrs, t);
+      }, 'Window -> Worker: js/test262/built-ins/Atomics/wait/good-views.html');
+      async_test(function(t) {
+        run_in_worker_strict(test262, attrs, t);
+      }, 'Worker -> Worker (strict): js/test262/built-ins/Atomics/wait/good-views.html');
+      async_test(function(t) {
+        run_in_worker(test262, attrs, t);
+      }, 'Worker -> Worker: js/test262/built-ins/Atomics/wait/good-views.html');
+      async_test(function(t) {
+        run_in_shared_worker_strict(test262, attrs, t);
+      }, 'SharedWorker -> Worker (strict): js/test262/built-ins/Atomics/wait/good-views.html');
+      async_test(function(t) {
+        run_in_shared_worker(test262, attrs, t);
+      }, 'SharedWorker -> Worker: js/test262/built-ins/Atomics/wait/good-views.html');
+    });
+  </script>
+</html>

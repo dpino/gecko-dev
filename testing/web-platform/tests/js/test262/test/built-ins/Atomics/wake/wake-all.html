@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>js/test262/built-ins/Atomics/wake/wake-all.html</title>
+
+    <script src="/resources/testharness.js"></script>
+    <script src="/resources/testharnessreport.js"></script>
+    <script src="/resources/test262-worker-harness.js?pipe=sub"></script>
+    <script src="/resources/test262-harness.js"></script>
+
+  </head>
+  <body>
+  </body>
+  <script type="text/javascript">
+    // Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+    // This code is governed by the BSD license found in the LICENSE file.
+
+    /*---
+    esid: sec-atomics.wake
+    description: >
+      Test that Atomics.wake wakes all waiters if that's what the count is.
+    ---*/
+    let attrs = {};
+    function test262() {
+			return "" +
+				"var WAKEUP = 0;                 // Waiters on this will be woken\n" +
+				"var DUMMY = 1;                  // Waiters on this will not be woken\n" +
+				"var RUNNING = 2;                // Accounting of live agents\n" +
+				"var NUMELEM = 3;\n" +
+				"var NUMAGENT = 3;\n" +
+				"let rs = [];\n" +
+				"let ws = [];\n" +
+				"for (var i=0; i < NUMAGENT; i++) {\n" +
+				"	let w = createWorkerFromString(`\n" +
+				"			onmessage = function(e) {\n" +
+				"				var ia = new Int32Array(e.data[0]);\n" +
+				"				Atomics.add(ia, ${RUNNING}, 1);\n" +
+				"				let ret = \"A \" + Atomics.wait(ia, ${WAKEUP}, 0);\n" +
+				"				postMessage(ret);\n" +
+				"			}\n" +
+				"  `);\n" +
+				"  w.onmessage = function(e) {\n" +
+				"    rs.push(e.data);\n" +
+				"    check_results();\n" +
+				"  };\n" +
+				"  ws.push(w);\n" +
+				"}\n" +
+				"let w = createWorkerFromString(`\n" +
+				"  onmessage = function(e) {\n" +
+				"			var ia = new Int32Array(e.data[0]);\n" +
+				"			Atomics.add(ia, ${RUNNING}, 1);\n" +
+				"			// This will always time out.\n" +
+				"			let ret = \"B \" + Atomics.wait(ia, ${DUMMY}, 0, 1000);\n" +
+				"			postMessage(ret);\n" +
+				"  }\n" +
+				"`);\n" +
+				"w.onmessage = function(e) {\n" +
+				"  rs.push(e.data);\n" +
+				"  check_results();\n" +
+				"}\n" +
+				"ws.push(w);\n" +
+				"var ia = new Int32Array(new SharedArrayBuffer(NUMELEM * Int32Array.BYTES_PER_ELEMENT));\n" +
+				"ws.forEach(function(worker) {\n" +
+				"  worker.postMessage([ia.buffer]);\n" +
+				"});\n" +
+				"setTimeout(function() {\n" +
+				"  // Wait for agents to be running.\n" +
+				"  waitUntil(ia, RUNNING, NUMAGENT+1);\n" +
+				"  // Then wait some more to give the agents a fair chance to wait.  If we don't,\n" +
+				"  // we risk sending the wakeup before agents are sleeping, and we hang.\n" +
+				"  sleep(500).then(function() {\n" +
+				"    // Wake all waiting on WAKEUP, should be 3 always, they won't time out.\n" +
+				"    assert.sameValue(Atomics.wake(ia, WAKEUP), NUMAGENT);\n" +
+				"  });\n" +
+				"}, 500);\n" +
+				"function check_results() {\n" +
+				"  if (rs.length == NUMAGENT+1) {\n" +
+				"    rs.sort();\n" +
+				"    for (var i=0; i < NUMAGENT; i++)\n" +
+				"      assert.sameValue(rs[i], \"A ok\");\n" +
+				"    assert.sameValue(rs[NUMAGENT], \"B timed-out\");\n" +
+				"    exitEventLoop(ws);\n" +
+				"  }\n" +
+				"}\n" +
+				"function waitUntil(ia, k, value) {\n" +
+				"	var i = 0;\n" +
+				"	while (Atomics.load(ia, k) !== value && i < 15) {\n" +
+				"		sleep(100);\n" +
+				"		i++;\n" +
+				"	}\n" +
+				"	assert.sameValue(Atomics.load(ia, k), value, \"All agents are running\");\n" +
+				"}\n";
+    }
+    window.addEventListener('load', function(e) {
+      async_test(function(t) {
+        run_in_iframe_strict(test262, attrs, t);
+      }, 'IFrame (strict): js/test262/built-ins/Atomics/wake/wake-all.html');
+      async_test(function(t) {
+        run_in_iframe(test262, attrs, t);
+      }, 'IFrame: js/test262/built-ins/Atomics/wake/wake-all.html');
+      async_test(function(t) {
+        run_in_window_strict(test262, attrs, t);
+      }, 'Window (strict): js/test262/built-ins/Atomics/wake/wake-all.html');
+      async_test(function(t) {
+        run_in_window(test262, attrs, t);
+      }, 'Window: js/test262/built-ins/Atomics/wake/wake-all.html');
+      async_test(function(t) {
+        run_in_worker_strict(test262, attrs, t);
+      }, 'Worker (strict): js/test262/built-ins/Atomics/wake/wake-all.html');
+      async_test(function(t) {
+        run_in_worker(test262, attrs, t);
+      }, 'Worker: js/test262/built-ins/Atomics/wake/wake-all.html');
+      async_test(function(t) {
+        run_in_shared_worker_strict(test262, attrs, t);
+      }, 'SharedWorker (strict): js/test262/built-ins/Atomics/wake/wake-all.html');
+      async_test(function(t) {
+        run_in_shared_worker(test262, attrs, t);
+      }, 'SharedWorker: js/test262/built-ins/Atomics/wake/wake-all.html');
+    });
+  </script>
+</html>

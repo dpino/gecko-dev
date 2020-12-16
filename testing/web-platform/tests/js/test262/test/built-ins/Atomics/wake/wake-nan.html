@@ -1,0 +1,67 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>test262/test/built-ins/Atomics/wake/wake-nan.html</title>
+    <meta name="help" href="https://storage.spec.whatwg.org/#dom-storagemanager-persisted">
+    <meta name="author" title="Mozilla" href="https://www.mozilla.org">
+
+    <script src="/resources/testharness.js"></script>
+    <script src="/resources/testharnessreport.js"></script>
+
+    <!-- Test262 harness -->
+    <script src="/resources/test262-harness.js"></script>
+
+    <!-- Test262 required libraries -->
+    <script src="/test262/harness/assert.js"></script>
+    <script src="/test262/harness/sta.js"></script>
+
+    <!-- Per-test required libraries -->
+
+
+  </head>
+  <body></body>
+  <script type="text/javascript">
+    window.addEventListener('load', function(e) {
+
+// Copyright (C) 2017 Mozilla Corporation.  All rights reserved.
+// This code is governed by the BSD license found in the LICENSE file.
+
+/*---
+esid: sec-atomics.wake
+description: >
+  Test that Atomics.wake wakes zero waiters if the count is NaN
+---*/
+function test262_in_window() {
+   $262.agent.start(
+   `
+   $262.agent.receiveBroadcast(function (sab) {
+     var ia = new Int32Array(sab);
+     $262.agent.report(Atomics.wait(ia, 0, 0, 1000)); // We will timeout eventually
+     $262.agent.leaving();
+   })
+   `);
+
+   var ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+
+   $262.agent.broadcast(ia.buffer);
+   $262.agent.sleep(500);                             // Give the agent a chance to wait
+   assert.sameValue(Atomics.wake(ia, 0, NaN), 0);  // Don't actually wake it
+   assert.sameValue(getReport(), "timed-out");
+
+   function getReport() {
+       var r;
+       while ((r = $262.agent.getReport()) == null)
+           $262.agent.sleep(100);
+       return r;
+   }
+
+}
+test(function() {
+   test262_in_window();
+}, 'test262/test/built-ins/Atomics/wake/wake-nan.html');
+
+    });
+  </script>
+</html>
