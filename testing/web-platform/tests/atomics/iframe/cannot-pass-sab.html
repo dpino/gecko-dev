@@ -1,0 +1,57 @@
+<!doctype html>
+<meta charset=utf-8>
+<title></title>
+<script src=/resources/testharness.js></script>
+<script src=/resources/testharnessreport.js></script>
+<script>
+
+window.addEventListener("load", function() {
+  async_test(function(t) {
+    function getIFrames() {
+      var ret = [];
+      var elements = document.getElementsByTagName('iframe');
+      for (let i = 0; i < elements.length; i++) {
+        ret.push(elements[i].contentWindow);
+      }
+      return ret;
+    }
+    function broadcast(workers, sab, idx) {
+      for (w of workers) {
+        w.postMessage([sab, idx], '*');
+      }
+    }
+    function assert_true(stmt) {
+      return stmt == true;
+    }
+
+    var workers = getIFrames();
+    workers[0].onmessage = function(e) {
+      var sab = e.data[0];
+      var ia = new Int32Array(sab);
+      // FIXME: Returns 'invalid array type for the operation'.
+      // If I instantiate a new Int32Array(SharedArrayBuffer) and use it in Atomics.wait, it returns:
+      // 'waiting is not allowed on this thread'.
+      try {
+        var ret = Atomics.wait(ia, 0, 0, 1000);
+        window.postMessage(ret, '*');
+      } catch(e) {
+        assert_true(e);
+				t.done();
+      }
+    };
+    window.onmessage = function(e) {
+      console.log(e.data);
+    }
+
+    var ia = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    broadcast(workers, ia.buffer);
+    setTimeout(() => Atomics.wake(ia, 0, 1), 500); // Wake one
+
+  }, "cannot-pass-sab");
+});
+
+</script>
+
+<body>
+<iframe style="display:none" id="iframe"></iframe>
+</body>
